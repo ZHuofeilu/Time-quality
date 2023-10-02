@@ -1,0 +1,49 @@
+---
+title: "Preliminary data cleaning and analysis for exploring Schedule instability"
+author: "Zhuofei"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Sequence analysis practise
+This is Zhuofei Lu's practise of sequence analysis. The original code drawn from
+Kamila Kolpashnikova:<https://github.com/Kolpashnikova/Sequence_Analysis_Workshop.git>.
+
+## Install packages
+
+```{r}
+if (!require("pacman")) install.packages("pacman")
+```
+
+## Loading required package: pacman
+
+```{r}
+library(pacman)
+```
+
+## load and install packages
+
+```{r}
+pacman::p_load(TraMineR, TraMineRextras, cluster, RColorBrewer, devtools, haven, 
+               tidyverse, reshape2, WeightedCluster, nnet)
+```
+
+## Load .dta (Stata) Dataset
+
+```{r}
+setwd("E:/OneDrive/SciencesPo/data")
+X3 <- read_dta("3days_cleaned0928.dta")
+```
+
+## Color Palette
+
+```{r}
+colourCount = 13
+getPalette = colorRampPalette(brewer.pal(9, "Set3"))
+```
+
+
