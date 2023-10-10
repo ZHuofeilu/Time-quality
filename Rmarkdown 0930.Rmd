@@ -36,7 +36,11 @@ pacman::p_load(TraMineR, TraMineRextras, cluster, RColorBrewer, devtools, haven,
 
 ```{r}
 setwd("E:/OneDrive/SciencesPo/data")
+## LL: you should create a R project using this directory instead of setting manually your working directory
+## it makes your code stronger and independent of personal configurations
 X3 <- read_dta("3days_cleaned0928.dta")
+## I would also suggest not to use capital letters for R objects as it makes the code a little bit more difficult to write
+## and if you use only lower cases as a rule, it makes R code safer from case errors
 ```
 
 ## Color Palette
