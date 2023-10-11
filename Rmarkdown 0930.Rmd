@@ -51,3 +51,22 @@ getPalette = colorRampPalette(brewer.pal(9, "Set3"))
 ```
 
 
+
+
+
+## intra-individual measure of schedule instability (using 2 diary days)
+
+dat <- tibble(id = c(1,1,2,2),
+              x1 = c(0,1,1,1),
+              x2 = c(0,1,1,1),
+              x3 = c(0,1, 0, 1))
+# with dplyr
+
+dat %>%
+  group_by(id) %>%
+  summarise(d = dist(data.frame(x1, x2, x3), method = "manhattan”))
+
+# with data.table
+
+setDT(dat)
+dat[ , .(d = dist(.SD, method = "manhattan")), by = id, .SD = x1:x3]
