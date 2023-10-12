@@ -54,7 +54,7 @@ getPalette = colorRampPalette(brewer.pal(9, "Set3"))
 
 
 
-## intra-individual measure of schedule instability (using 2 diary days)
+############################### [Updated on 11/10/2023] intra-individual measure of schedule instability (using 2 diary days) 
 
 dat <- tibble(id = c(1,1,2,2),
               x1 = c(0,1,1,1),
@@ -70,3 +70,38 @@ dat %>%
 
 setDT(dat)
 dat[ , .(d = dist(.SD, method = "manhattan")), by = id, .SD = x1:x3]
+
+
+############################### [Updated on 12/10/2023] intra-individual measure of schedule instability (using 3 diary days)
+
+dat <- tibble(id = c(1,1,1,2,2,2),
+              x1 = c(0,1,0,0,1,1),
+              x2 = c(1,1,0,1,1,1),
+              x3 = c(0,1,0,1,0,1))
+
+compute_distances <- function(data){
+  observations <- as.matrix(data.frame(data$x1, data$x2, data$x3))
+  distances <- dist(observations, method = "manhattan")
+  return(as.vector(distances))
+}
+
+distances_by_id <- dat %>%
+  group_by(id) %>%
+  group_map(~ tibble(distance = compute_distances(.x)), .keep = TRUE)
+
+distances_df <- bind_rows(distances_by_id, .id = "id")
+
+print(distances_df)
+
+## variance
+distances_df %>%
+  group_by(id) %>%
+  summarise(variance = var(distance, na.rm = TRUE))
+
+## mean
+mean_distances <- distances_df %>%
+  group_by(id) %>%
+  summarise(mean_distance = mean(distance))
+
+print(mean_distances)
+
