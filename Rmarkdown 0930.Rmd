@@ -29,7 +29,7 @@ library(pacman)
 
 ```{r}
 pacman::p_load(TraMineR, TraMineRextras, cluster, RColorBrewer, devtools, haven, 
-               tidyverse, reshape2, WeightedCluster, nnet)
+               tidyverse, reshape2, WeightedCluster, nnet, data.table)
 ```
 
 ## Load .dta (Stata) Dataset
@@ -38,7 +38,7 @@ pacman::p_load(TraMineR, TraMineRextras, cluster, RColorBrewer, devtools, haven,
 setwd("E:/OneDrive/SciencesPo/data")
 ## LL: you should create a R project using this directory instead of setting manually your working directory
 ## it makes your code stronger and independent of personal configurations
-X3 <- read_dta("3days_cleaned0928.dta")
+x3 <- read_dta("3days_cleaned0928.dta")
 ## I would also suggest not to use capital letters for R objects as it makes the code a little bit more difficult to write
 ## and if you use only lower cases as a rule, it makes R code safer from case errors
 ```
@@ -53,7 +53,7 @@ getPalette = colorRampPalette(brewer.pal(9, "Set3"))
 
 
 
-
+```{r}
 ############################### [Updated on 11/10/2023] intra-individual measure of schedule instability (using 2 diary days) 
 
 dat <- tibble(id = c(1,1,2,2),
@@ -64,7 +64,7 @@ dat <- tibble(id = c(1,1,2,2),
 
 dat %>%
   group_by(id) %>%
-  summarise(d = dist(data.frame(x1, x2, x3), method = "manhattan”))
+  summarise(d = dist(data.frame(x1, x2, x3), method = "manhattan"))
 
 # with data.table
 
@@ -105,3 +105,15 @@ mean_distances <- distances_df %>%
 
 print(mean_distances)
 
+# Here we go
+setDT(x3)
+
+instability <- x3[
+  , .(d = dist(.SD,  method = "manhattan")), by = mainid, .SD = pri1:pri144
+][
+  , .(insta = mean(d)), by = mainid
+]
+
+hist(instability$insta)
+
+```
