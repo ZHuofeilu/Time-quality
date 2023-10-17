@@ -72,36 +72,57 @@ setDT(dat)
 dat[ , .(d = dist(.SD, method = "manhattan")), by = id, .SD = x1:x3]
 
 
-############################### [Updated on 12/10/2023] intra-individual measure of schedule instability (using 3 diary days)
+############################### [Updated on 17/10/2023] intra-individual measure of schedule instability (using 3 diary days)
+## Example for practise
+library(data.table)
+library(tibble)
 
 dat <- tibble(id = c(1,1,1,2,2,2),
               x1 = c(0,1,0,0,1,1),
               x2 = c(1,1,0,1,1,1),
               x3 = c(0,1,0,1,0,1))
+setDT(dat)
 
-compute_distances <- function(data){
-  observations <- as.matrix(data.frame(data$x1, data$x2, data$x3))
-  distances <- dist(observations, method = "manhattan")
-  return(as.vector(distances))
-}
+# use data.table to estimate manhattan distance
+distances_df <- dat[, .(distance = dist(.SD, method = "manhattan")), by = id, .SDcols = x1:x3]
 
-distances_by_id <- dat %>%
-  group_by(id) %>%
-  group_map(~ tibble(distance = compute_distances(.x)), .keep = TRUE)
-
-distances_df <- bind_rows(distances_by_id, .id = "id")
-
+# print manhattan distance
 print(distances_df)
 
-## variance
-distances_df %>%
-  group_by(id) %>%
-  summarise(variance = var(distance, na.rm = TRUE))
+# use data.table  to estimate mean and variance
+summary_stats <- distances_df[, .(mean_distance = mean(distance), variance = var(distance)), by = id]
 
-## mean
-mean_distances <- distances_df %>%
-  group_by(id) %>%
-  summarise(mean_distance = mean(distance))
+# print mean and variance
+print(summary_stats)
 
-print(mean_distances)
+
+##Use UKTUS for practise
+X3 <- X3 %>%
+  group_by(mainid) %>%
+  mutate(ndays = n())
+d2 <- X3  %>%
+  filter(ndays == 2)
+head(d2$mainid)
+
+setDT(X3)
+
+distances_df <- X3[, .(distance = dist(.SD, method = "manhattan")), by = mainid, .SDcols = w_pri1:w_pri144]
+print(distances_df)
+
+mean_distances <- distances_df[, .(mean_distance = mean(distance)), by = mainid]
+
+X3 <- X3 %>% 
+  left_join(mean_distances, by = "mainid")
+
+summary(X3$mean_distance)
+
+table(X3$wfh)
+
+model1 <- lm(mean_distance ~ wfh , data=X3)
+summary(model1)
+
+install.packages("plm")
+library(plm)
+model2 <- plm(frag_start ~ workplace , data=X3, index=c("mainid", "diaryord"), model="random")
+summary(model2)
 
