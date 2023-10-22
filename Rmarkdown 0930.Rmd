@@ -155,7 +155,7 @@ all_combinations <- expand.grid(
   child = unique(d3$child),
   health = unique(d3$health),
   marstat = unique(d3$marstat),
-  age = median(d3$age, na.rm = TRUE),    # 使用中位数或均值
+  age = median(d3$age, na.rm = TRUE),    
   labin2 = median(d3$labin2, na.rm = TRUE)
 )
 
