@@ -96,33 +96,81 @@ summary_stats <- distances_df[, .(mean_distance = mean(distance), variance = var
 print(summary_stats)
 
 
-##Use UKTUS for practise
+############################### Use UKTUS for practise
+library(data.table)
+library(tibble)
 X3 <- X3 %>%
   group_by(mainid) %>%
   mutate(ndays = n())
 d2 <- X3  %>%
-  filter(ndays == 2)
+  filter(ndays >= 2)
 head(d2$mainid)
 
-setDT(X3)
+setDT(d2)
 
-distances_df <- X3[, .(distance = dist(.SD, method = "manhattan")), by = mainid, .SDcols = w_pri1:w_pri144]
+distances_df <- d2[, .(distance = dist(.SD, method = "manhattan")), by = mainid, .SDcols = w_pri1:w_pri144]
 print(distances_df)
 
 mean_distances <- distances_df[, .(mean_distance = mean(distance)), by = mainid]
 
-X3 <- X3 %>% 
+d2 <- d2 %>% 
   left_join(mean_distances, by = "mainid")
 
-summary(X3$mean_distance)
+summary(d2$mean_distance)
 
-table(X3$wfh)
+table(d2$workplace)
 
-model1 <- lm(mean_distance ~ wfh , data=X3)
+
+##slice the sample, keep only one observation for each respondent
+library(dplyr)
+d3 <- d2 %>%
+  group_by(mainid) %>%
+  slice_sample(n = 1)
+print(d3)
+
+d3 <- d3[d3$headocc3 != 4, ]
+
+##predict schedule instability
+##Key variables: wfh (work from home 1 "No" 2 "Yes"); headocc3 (1 "professional class" 2 "intermediate class" 3"routine class")
+
+model1 <- lm(mean_distance ~ factor(wfh)+ factor(headocc3) + factor(sex)+ factor(child)+ factor(health)+ factor(marstat) + age  + labin2
+             , data=d3, weight=daywtq)
 summary(model1)
 
-install.packages("plm")
-library(plm)
-model2 <- plm(frag_start ~ workplace , data=X3, index=c("mainid", "diaryord"), model="random")
+model2 <- lm(mean_distance ~ factor(wfh)*factor(headocc3) + factor(sex)+ factor(child)+ factor(health)+ factor(marstat) + age  + labin2
+             , data=d3, weight=daywtq)
 summary(model2)
+d4<-predict(model2)
+
+write_dta(d3, "d3.dta")
+
+## try to plot
+library(ggplot2)
+
+# 1. generate the predcted data
+all_combinations <- expand.grid(
+  wfh = unique(d3$wfh),
+  headocc3 = unique(d3$headocc3),
+  sex = unique(d3$sex),
+  child = unique(d3$child),
+  health = unique(d3$health),
+  marstat = unique(d3$marstat),
+  age = median(d3$age, na.rm = TRUE),    # 使用中位数或均值
+  labin2 = median(d3$labin2, na.rm = TRUE)
+)
+
+## predict using the model2
+all_combinations$predicted <- predict(model2, all_combinations)
+
+## plot
+library(ggplot2)
+
+p <- ggplot(all_combinations, aes(x=factor(wfh), y=predicted, group=factor(headocc3), color=factor(headocc3))) + 
+  geom_line(aes(linetype=factor(headocc3))) + 
+  geom_point(aes(shape=factor(headocc3))) + 
+  labs(y="Predicted mean_distance", x="WFH", color="Headocc3 Levels", linetype="Headocc3 Levels", shape="Headocc3 Levels") +
+  theme_minimal()
+
+print(p)
+
 
