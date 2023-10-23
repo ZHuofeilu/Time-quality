@@ -251,13 +251,14 @@ library(AER)
 ```
 ```{r}
 model_tobit1 <- tobit(mean_distance ~ factor(wfh) + factor(headocc3) + factor(sex) + factor(child) + factor(health) + factor(marstat) + age + labin2, 
-                     data = d3, weights = daywtq, left=0) # left=0 表示下限是0
+                     data = d3, weights = daywtq, left=0) 
 
 summary(model_tobit1)
 
+## Interaction
 ```{r}
 model_tobit2 <- tobit(mean_distance ~ factor(wfh)*factor(headocc3) + factor(sex) + factor(child) + factor(health) + factor(marstat) + age + labin2, 
-                     data = d3, weights = daywtq, left=0) # left=0 表示下限是0
+                     data = d3, weights = daywtq, left=0) 
 
 summary(model_tobit2)
 
