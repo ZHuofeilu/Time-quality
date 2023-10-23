@@ -101,7 +101,9 @@ print(summary_stats)
 title: "Schedule instability"
 author: "Zhuofei"
 date: "2023-10-23"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -115,6 +117,7 @@ library(tidyverse)
 library(TraMineR)
 library(cluster)
 library(dplyr)
+library(ggplot2)
 ```
 ## Read data UKTUS 3days cleaned
 
@@ -123,7 +126,9 @@ setwd("C:/Zhuofei Lu/OneDrive/SciencesPo/Schedule instability/data")
 X3 <- read_dta("3days_cleaned0928.dta")
 ```
 
-## Keep those who have at least 2 diary days (new subset:d2)
+## Keep those who have at least 2 diary days (new subset: d2)
+At this stage, we drop (1763-1164=599) cases
+
 ```{r}
 X3 <- X3 %>%
   group_by(mainid) %>%
@@ -148,7 +153,9 @@ d2 <- d2 %>%
 summary(d2$mean_distance)
 ```
 
-## slice the sample, keep only one observation for each respondent
+## Slice the sample, keep only one observation for each respondent
+At this stage, we drop (599-568=31) cases
+
 ```{r}
 d2 <- read_dta("d2.dta")
 
@@ -162,6 +169,8 @@ print(d3)
 ```
 
 ## Drop cases who were not in paid employment
+At this stage, we drop (568-567=1) cases
+
 ```{r}
 d3 <- d3[d3$headocc3 != 4, ]
 ```
@@ -173,7 +182,7 @@ library(ggplot2)
 library(dplyr)
 
 d3$headocc3 <- as.factor(as.character(d3$headocc3))
-d3$wfh <- as.factor(as.character(d3$wfh))
+d3$wfh <- factor(d3$wfh, levels = c(1, 2), labels = c("Travel to Work", "Work from Home"))
 
 
 d3_summary <- d3 %>%
@@ -185,7 +194,8 @@ p <- ggplot(d3_summary, aes(x=headocc3, y=mean_distance, fill=wfh)) +
   geom_bar(stat="identity", position="dodge") +
   labs(y="Mean of mean_distance", x="Headocc3 Categories") +
   theme_minimal() +
-  scale_fill_grey(name="WFH Category", start=0.2, end=0.8) +
+  scale_fill_manual(name="Work Mode", 
+                    values = c("Travel to Work" = "grey40", "Work from Home" = "grey80")) +
   scale_x_discrete(labels=c("1"="High", "2"="Intermediate", "3"="Routine"))
 
 print(p)
@@ -213,7 +223,7 @@ all_combinations <- expand.grid(
   child = unique(d3$child),
   health = unique(d3$health),
   marstat = unique(d3$marstat),
-  age = median(d3$age, na.rm = TRUE),
+  age = median(d3$age, na.rm = TRUE), 
   labin2 = median(d3$labin2, na.rm = TRUE)
 )
 ```
@@ -221,11 +231,12 @@ all_combinations <- expand.grid(
 ## Predict interaction terms using the model results
 ```{r}
 all_combinations$predicted <- predict(model2, all_combinations)
+
 ```
 
 ## Plot
 ```{r}
-p1 <- ggplot(all_combinations, aes(x=factor(wfh), y=predicted, group=factor(headocc3), color=factor(headocc3))) + 
+p1<- ggplot(all_combinations, aes(x=factor(wfh), y=predicted, group=factor(headocc3), color=factor(headocc3))) + 
   geom_line(aes(linetype=factor(headocc3))) + 
   geom_point(aes(shape=factor(headocc3))) + 
   labs(y="Predicted mean_distance", x="WFH", color="Headocc3 Levels", linetype="Headocc3 Levels", shape="Headocc3 Levels") +
