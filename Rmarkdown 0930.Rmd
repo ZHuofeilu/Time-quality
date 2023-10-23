@@ -245,7 +245,22 @@ p1<- ggplot(all_combinations, aes(x=factor(wfh), y=predicted, group=factor(heado
 print(p1)
 ```
 
+## Repeat by using Tobit
+```{r message=FALSE}
+library(AER)
+```
+```{r}
+model_tobit1 <- tobit(mean_distance ~ factor(wfh) + factor(headocc3) + factor(sex) + factor(child) + factor(health) + factor(marstat) + age + labin2, 
+                     data = d3, weights = daywtq, left=0) # left=0 表示下限是0
 
+summary(model_tobit1)
 
+```{r}
+model_tobit2 <- tobit(mean_distance ~ factor(wfh)*factor(headocc3) + factor(sex) + factor(child) + factor(health) + factor(marstat) + age + labin2, 
+                     data = d3, weights = daywtq, left=0) # left=0 表示下限是0
+
+summary(model_tobit2)
+
+```
 
 
