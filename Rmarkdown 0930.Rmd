@@ -96,16 +96,45 @@ summary_stats <- distances_df[, .(mean_distance = mean(distance), variance = var
 print(summary_stats)
 
 
-############################### Use UKTUS for practise
+############################### [Updated on 23/10/2023] Use UKTUS for practise 
+---
+title: "Schedule instability"
+author: "Zhuofei"
+date: "2023-10-23"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Library packages
+```{r message=FALSE, include=FALSE}
+library(haven)
 library(data.table)
 library(tibble)
+library(tidyverse)
+library(TraMineR)
+library(cluster)
+library(dplyr)
+```
+## Read data UKTUS 3days cleaned
+
+```{r}
+setwd("C:/Zhuofei Lu/OneDrive/SciencesPo/Schedule instability/data")
+X3 <- read_dta("3days_cleaned0928.dta")
+```
+
+## Keep those who have at least 2 diary days (new subset:d2)
+```{r}
 X3 <- X3 %>%
   group_by(mainid) %>%
   mutate(ndays = n())
 d2 <- X3  %>%
   filter(ndays >= 2)
 head(d2$mainid)
+```
 
+## Calculate the manhattan distance
+```{r}
 setDT(d2)
 
 distances_df <- d2[, .(distance = dist(.SD, method = "manhattan")), by = mainid, .SDcols = w_pri1:w_pri144]
@@ -117,37 +146,66 @@ d2 <- d2 %>%
   left_join(mean_distances, by = "mainid")
 
 summary(d2$mean_distance)
+```
 
-table(d2$workplace)
+## slice the sample, keep only one observation for each respondent
+```{r}
+d2 <- read_dta("d2.dta")
 
-
-##slice the sample, keep only one observation for each respondent
-library(dplyr)
 d3 <- d2 %>%
   group_by(mainid) %>%
   slice_sample(n = 1)
+```
+
+```{r}
 print(d3)
+```
 
+## Drop cases who were not in paid employment
+```{r}
 d3 <- d3[d3$headocc3 != 4, ]
+```
 
-##predict schedule instability
-##Key variables: wfh (work from home 1 "No" 2 "Yes"); headocc3 (1 "professional class" 2 "intermediate class" 3"routine class")
+## Predict schedule instability
+## Discriptive statistics
+```{r pressure, echo=FALSE}
+library(ggplot2)
+library(dplyr)
 
+d3$headocc3 <- as.factor(as.character(d3$headocc3))
+d3$wfh <- as.factor(as.character(d3$wfh))
+
+
+d3_summary <- d3 %>%
+  group_by(headocc3, wfh) %>%
+  summarise(mean_distance = mean(mean_distance, na.rm = TRUE))
+
+
+p <- ggplot(d3_summary, aes(x=headocc3, y=mean_distance, fill=wfh)) + 
+  geom_bar(stat="identity", position="dodge") +
+  labs(y="Mean of mean_distance", x="Headocc3 Categories") +
+  theme_minimal() +
+  scale_fill_grey(name="WFH Category", start=0.2, end=0.8) +
+  scale_x_discrete(labels=c("1"="High", "2"="Intermediate", "3"="Routine"))
+
+print(p)
+
+```
+## Regression OLS
+```{r}
 model1 <- lm(mean_distance ~ factor(wfh)+ factor(headocc3) + factor(sex)+ factor(child)+ factor(health)+ factor(marstat) + age  + labin2
              , data=d3, weight=daywtq)
 summary(model1)
-
+```
+## Moderating role of class
+```{r}
 model2 <- lm(mean_distance ~ factor(wfh)*factor(headocc3) + factor(sex)+ factor(child)+ factor(health)+ factor(marstat) + age  + labin2
              , data=d3, weight=daywtq)
 summary(model2)
-d4<-predict(model2)
+```
 
-write_dta(d3, "d3.dta")
-
-## try to plot
-library(ggplot2)
-
-# 1. generate the predcted data
+## Plot the interaction
+```{r}
 all_combinations <- expand.grid(
   wfh = unique(d3$wfh),
   headocc3 = unique(d3$headocc3),
@@ -155,22 +213,28 @@ all_combinations <- expand.grid(
   child = unique(d3$child),
   health = unique(d3$health),
   marstat = unique(d3$marstat),
-  age = median(d3$age, na.rm = TRUE),    
+  age = median(d3$age, na.rm = TRUE),
   labin2 = median(d3$labin2, na.rm = TRUE)
 )
+```
 
-## predict using the model2
+## Predict interaction terms using the model results
+```{r}
 all_combinations$predicted <- predict(model2, all_combinations)
+```
 
-## plot
-library(ggplot2)
-
-p <- ggplot(all_combinations, aes(x=factor(wfh), y=predicted, group=factor(headocc3), color=factor(headocc3))) + 
+## Plot
+```{r}
+p1 <- ggplot(all_combinations, aes(x=factor(wfh), y=predicted, group=factor(headocc3), color=factor(headocc3))) + 
   geom_line(aes(linetype=factor(headocc3))) + 
   geom_point(aes(shape=factor(headocc3))) + 
   labs(y="Predicted mean_distance", x="WFH", color="Headocc3 Levels", linetype="Headocc3 Levels", shape="Headocc3 Levels") +
   theme_minimal()
 
-print(p)
+print(p1)
+```
+
+
+
 
 
