@@ -13,29 +13,26 @@ knitr::opts_chunk$set(echo = TRUE)
 This is Zhuofei Lu's practise of sequence analysis. The original code drawn from
 Kamila Kolpashnikova:<https://github.com/Kolpashnikova/Sequence_Analysis_Workshop.git>.
 
-## Install packages
-
-```{r}
-if (!require("pacman")) install.packages("pacman")
-```
-
 ## Loading required package: pacman
 
 ```{r}
-library(pacman)
+if (!require("pacman")){
+  install.packages("pacman")
+  library(pacman)
+}
 ```
 
 ## load and install packages
 
-```{r}
+```{r libraries}
 pacman::p_load(TraMineR, TraMineRextras, cluster, RColorBrewer, devtools, haven, 
-               tidyverse, reshape2, WeightedCluster, nnet, data.table)
+               tidyverse, reshape2, WeightedCluster, nnet, data.table, Statamarkdown, AER)
 ```
 
 ## Load .dta (Stata) Dataset
 
 ```{r}
-setwd("E:/OneDrive/SciencesPo/data")
+# setwd("E:/OneDrive/SciencesPo/data")
 ## LL: you should create a R project using this directory instead of setting manually your working directory
 ## it makes your code stronger and independent of personal configurations
 x3 <- read_dta("3days_cleaned0928.dta")
@@ -49,9 +46,6 @@ x3 <- read_dta("3days_cleaned0928.dta")
 colourCount = 13
 getPalette = colorRampPalette(brewer.pal(9, "Set3"))
 ```
-
-
-
 
 ```{r}
 ############################### [Updated on 11/10/2023] intra-individual measure of schedule instability (using 2 diary days) 
@@ -97,43 +91,19 @@ print(summary_stats)
 
 
 ############################### [Updated on 23/10/2023] Use UKTUS for practise 
----
-title: "Schedule instability"
-author: "Zhuofei"
-date: "2023-10-23"
-output:
-  html_document: default
-  pdf_document: default
----
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 ```
-## Library packages
-```{r message=FALSE, include=FALSE}
-library(haven)
-library(data.table)
-library(tibble)
-library(tidyverse)
-library(TraMineR)
-library(cluster)
-library(dplyr)
-library(ggplot2)
-```
+
 ## Read data UKTUS 3days cleaned
 
-```{r}
-setwd("C:/Zhuofei Lu/OneDrive/SciencesPo/Schedule instability/data")
-X3 <- read_dta("3days_cleaned0928.dta")
-```
 
 ## Keep those who have at least 2 diary days (new subset: d2)
 At this stage, we drop (1763-1164=599) cases
 
 ```{r}
-X3 <- X3 %>%
+x3 <- x3 %>%
   group_by(mainid) %>%
   mutate(ndays = n())
-d2 <- X3  %>%
+d2 <- x3  %>%
   filter(ndays >= 2)
 head(d2$mainid)
 ```
@@ -157,14 +127,13 @@ summary(d2$mean_distance)
 At this stage, we drop (599-568=31) cases
 
 ```{r}
-d2 <- read_dta("d2.dta")
+# d2 <- read_dta("d2.dta")
+# Am I right to assume that you exported the above d2 file to stata? It does not appear in the syntax file as it should be : this document must be autonomous
 
 d3 <- d2 %>%
   group_by(mainid) %>%
   slice_sample(n = 1)
-```
 
-```{r}
 print(d3)
 ```
 
@@ -178,12 +147,10 @@ d3 <- d3[d3$headocc3 != 4, ]
 ## Predict schedule instability
 ## Discriptive statistics
 ```{r pressure, echo=FALSE}
-library(ggplot2)
-library(dplyr)
 
 d3$headocc3 <- as.factor(as.character(d3$headocc3))
 d3$wfh <- factor(d3$wfh, levels = c(1, 2), labels = c("Travel to Work", "Work from Home"))
-
+# What is wfh?
 
 d3_summary <- d3 %>%
   group_by(headocc3, wfh) %>%
@@ -199,16 +166,24 @@ p <- ggplot(d3_summary, aes(x=headocc3, y=mean_distance, fill=wfh)) +
   scale_x_discrete(labels=c("1"="High", "2"="Intermediate", "3"="Routine"))
 
 print(p)
-
+write_dta(d3, path = "d3.dta")
 ```
 ## Regression OLS
-```{r}
+```{stata, collectcode = TRUE}
+use d3.dta
+*codebook, compact
+svyset [pweight = daywtq]
+svy: reg mean_distance i.wfh i.headocc3 i.sex i.child i.health i.marstat age labin2
+```
+
+The two chunks below do not work, I turned off their evaluation
+```{r, eval = F}
 model1 <- lm(mean_distance ~ factor(wfh)+ factor(headocc3) + factor(sex)+ factor(child)+ factor(health)+ factor(marstat) + age  + labin2
              , data=d3, weight=daywtq)
 summary(model1)
 ```
 ## Moderating role of class
-```{r}
+```{r, eval = F}
 model2 <- lm(mean_distance ~ factor(wfh)*factor(headocc3) + factor(sex)+ factor(child)+ factor(health)+ factor(marstat) + age  + labin2
              , data=d3, weight=daywtq)
 summary(model2)
@@ -229,13 +204,13 @@ all_combinations <- expand.grid(
 ```
 
 ## Predict interaction terms using the model results
-```{r}
+```{r, eval = F}
 all_combinations$predicted <- predict(model2, all_combinations)
 
 ```
 
 ## Plot
-```{r}
+```{r, eval = F}
 p1<- ggplot(all_combinations, aes(x=factor(wfh), y=predicted, group=factor(headocc3), color=factor(headocc3))) + 
   geom_line(aes(linetype=factor(headocc3))) + 
   geom_point(aes(shape=factor(headocc3))) + 
@@ -246,17 +221,15 @@ print(p1)
 ```
 
 ## Repeat by using Tobit
-```{r message=FALSE}
-library(AER)
-```
-```{r}
+
+```{r, eval = F}
 model_tobit1 <- tobit(mean_distance ~ factor(wfh) + factor(headocc3) + factor(sex) + factor(child) + factor(health) + factor(marstat) + age + labin2, 
                      data = d3, weights = daywtq, left=0) 
 
 summary(model_tobit1)
 
 ## Interaction
-```{r}
+
 model_tobit2 <- tobit(mean_distance ~ factor(wfh)*factor(headocc3) + factor(sex) + factor(child) + factor(health) + factor(marstat) + age + labin2, 
                      data = d3, weights = daywtq, left=0) 
 
